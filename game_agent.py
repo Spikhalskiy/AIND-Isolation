@@ -7,6 +7,9 @@ You must test your agent's strength against a set of agents with known
 relative strength using tournament.py and include the results in your report.
 """
 import random
+from operator import itemgetter
+
+from isolation import isolation
 
 
 class Timeout(Exception):
@@ -37,6 +40,8 @@ def custom_score(game, player):
         The heuristic value of the current game state to the specified player.
     """
 
+    assert isinstance(game, isolation.Board)
+    assert isinstance(player, CustomPlayer)
     # TODO: finish this function!
     raise NotImplementedError
 
@@ -124,19 +129,25 @@ class CustomPlayer:
         # move from the game board (i.e., an opening book), or returning
         # immediately if there are no legal moves
 
+        # Return if there are no legal moves
+        if not legal_moves:
+            return (-1, -1)
+
+        # TODO implement opening book
+
+        last_completed_search = None
         try:
             # The search method call (alpha beta or minimax) should happen in
             # here in order to avoid timeout. The try/except block will
             # automatically catch the exception raised by the search method
             # when the timer gets close to expiring
-            pass
-
+            last_completed_search = getattr(self, self.method)(game, self.search_depth)
         except Timeout:
-            # Handle any actions required at timeout, if necessary
+            raise Timeout()
+            # TODO Handle any actions required at timeout, if necessary
             pass
 
-        # Return the best move from the last completed search iteration
-        raise NotImplementedError
+        return last_completed_search[1]
 
     def minimax(self, game, depth, maximizing_player=True):
         """Implement the minimax search algorithm as described in the lectures.
@@ -169,11 +180,26 @@ class CustomPlayer:
                 to pass the project unit tests; you cannot call any other
                 evaluation function directly.
         """
+
+        assert isinstance(game, isolation.Board)
+
         if self.time_left() < self.TIMER_THRESHOLD:
             raise Timeout()
 
-        # TODO: finish this function!
-        raise NotImplementedError
+        active_player = game.active_player
+        legal_moves = game.get_legal_moves(active_player)
+        if not legal_moves:
+            return 0, (-1, -1)
+
+        select_func = max if maximizing_player else min
+        if depth > 1:
+            best_move = select_func([self.minimax(game.forecast_move(move), depth - 1, not maximizing_player)
+                                     for move in game.get_legal_moves(active_player)], key=itemgetter(0))
+        else:
+            best_move = select_func([(self.score(game.forecast_move(move), active_player), move)
+                                     for move in game.get_legal_moves(active_player)], key=itemgetter(0))
+
+        return best_move
 
     def alphabeta(self, game, depth, alpha=float("-inf"), beta=float("inf"), maximizing_player=True):
         """Implement minimax search with alpha-beta pruning as described in the
