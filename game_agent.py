@@ -248,4 +248,30 @@ class CustomPlayer:
             raise Timeout()
 
         # TODO: finish this function!
-        raise NotImplementedError
+
+        assert isinstance(game, isolation.Board)
+
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise Timeout()
+
+        active_player = game.active_player
+        select_func = max if maximizing_player else min
+
+        legal_moves = game.get_legal_moves(active_player)
+        if not legal_moves:
+            return 0, (-1, -1)
+
+        if depth > 1:
+            # select max or min score depends on `maximizing_player`
+            best_move = select_func(
+                # we call minimax for each possible move from legal moves, make tuples of
+                # <score from minimax, related move>, move from minimax result is not used
+                [(self.alphabeta(game.forecast_move(move), depth - 1, not maximizing_player)[0], move)
+                 for move in game.get_legal_moves(active_player)],
+                key=itemgetter(0))
+        else:
+            # we calculate score/utilization function for maximizing player, not for an active one
+            player_to_compute_score = active_player if maximizing_player else game.get_opponent(active_player)
+            best_move = select_func([(self.score(game.forecast_move(move), player_to_compute_score), move)
+                                     for move in game.get_legal_moves(active_player)], key=itemgetter(0))
+        return best_move
