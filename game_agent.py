@@ -16,6 +16,9 @@ class Timeout(Exception):
     pass
 
 
+NO_MOVE = (-1, -1)
+
+
 def custom_score(game, player):
     """Calculate the heuristic value of a game state from the point of view
     of the given player.
@@ -130,11 +133,10 @@ class CustomPlayer:
 
         # Return if there are no legal moves
         if not legal_moves:
-            return (-1, -1)
+            return NO_MOVE
 
         # TODO implement opening book
 
-        last_completed_search = None
         try:
             # The search method call (alpha beta or minimax) should happen in
             # here in order to avoid timeout. The try/except block will
@@ -146,6 +148,25 @@ class CustomPlayer:
             # TODO Handle any actions required at timeout, if necessary
             pass
         return last_completed_search[1]
+
+    def terminal_score(self, game, maximizing_player):
+        """Implement a function that returns score of the current game state for a maximizing player
+        immediately without making any board permutations.
+        It's a Utility function from AIMA
+
+        :param game: isolation.Board
+            An instance of the Isolation game `Board` class representing the
+            current game state
+        :param maximizing_player: bool
+            Flag indicating whether the current search depth and active player corresponds to a
+            maximizing layer (True) or a minimizing layer (False)
+        :return: float
+            score function value for the current game state
+        """
+        active_player = game.active_player
+        # we calculate score/utilization function for maximizing player, not for an active one
+        player_to_compute_terminal_score = active_player if maximizing_player else game.get_opponent(active_player)
+        return self.score(game, player_to_compute_terminal_score)
 
     def minimax(self, game, depth, maximizing_player=True):
         """Implement the minimax search algorithm as described in the lectures.
@@ -189,9 +210,9 @@ class CustomPlayer:
 
         legal_moves = game.get_legal_moves(active_player)
         if not legal_moves:
-            return 0, (-1, -1)
+            return 0, NO_MOVE
 
-        if depth > 1:
+        if depth > 0:
             # select max or min score depends on `maximizing_player`
             best_move = select_func(
                 # we call minimax for each possible move from legal moves, make tuples of
@@ -199,12 +220,9 @@ class CustomPlayer:
                 [(self.minimax(game.forecast_move(move), depth - 1, not maximizing_player)[0], move)
                  for move in game.get_legal_moves(active_player)],
                 key=itemgetter(0))
+            return best_move
         else:
-            # we calculate score/utilization function for maximizing player, not for an active one
-            player_to_compute_score = active_player if maximizing_player else game.get_opponent(active_player)
-            best_move = select_func([(self.score(game.forecast_move(move), player_to_compute_score), move)
-                                     for move in game.get_legal_moves(active_player)], key=itemgetter(0))
-        return best_move
+            return self.terminal_score(game, maximizing_player), NO_MOVE
 
     def alphabeta(self, game, depth, alpha=float("-inf"), beta=float("inf"), maximizing_player=True):
         """Implement minimax search with alpha-beta pruning as described in the
@@ -247,31 +265,38 @@ class CustomPlayer:
         if self.time_left() < self.TIMER_THRESHOLD:
             raise Timeout()
 
-        # TODO: finish this function!
-
         assert isinstance(game, isolation.Board)
 
         if self.time_left() < self.TIMER_THRESHOLD:
             raise Timeout()
 
         active_player = game.active_player
-        select_func = max if maximizing_player else min
 
         legal_moves = game.get_legal_moves(active_player)
         if not legal_moves:
-            return 0, (-1, -1)
+            return 0, NO_MOVE
 
-        if depth > 1:
-            # select max or min score depends on `maximizing_player`
-            best_move = select_func(
-                # we call minimax for each possible move from legal moves, make tuples of
-                # <score from minimax, related move>, move from minimax result is not used
-                [(self.alphabeta(game.forecast_move(move), depth - 1, not maximizing_player)[0], move)
-                 for move in game.get_legal_moves(active_player)],
-                key=itemgetter(0))
+        if depth > 0:
+            legal_moves = game.get_legal_moves(active_player)
+            parent_value = float("-inf") if maximizing_player else float("+inf")
+            for move in legal_moves:
+                move_value = self.alphabeta(game.forecast_move(move), depth - 1, alpha, beta, not maximizing_player)[0]
+                if maximizing_player:
+                    # Max-Value from AIMA
+                    if move_value > parent_value:
+                        parent_value = move_value
+                        best_move = move
+                    if move_value >= beta:
+                        return move_value, move
+                    alpha = max(alpha, parent_value)
+                else:
+                    # Min-Value from AIMA
+                    if move_value < parent_value:
+                        parent_value = move_value
+                        best_move = move
+                    if parent_value <= alpha:
+                        return move_value, move
+                    beta = min(beta, parent_value)
+            return parent_value, best_move
         else:
-            # we calculate score/utilization function for maximizing player, not for an active one
-            player_to_compute_score = active_player if maximizing_player else game.get_opponent(active_player)
-            best_move = select_func([(self.score(game.forecast_move(move), player_to_compute_score), move)
-                                     for move in game.get_legal_moves(active_player)], key=itemgetter(0))
-        return best_move
+            return self.terminal_score(game, maximizing_player), NO_MOVE
