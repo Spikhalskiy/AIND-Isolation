@@ -137,14 +137,24 @@ class CustomPlayer:
 
         # TODO implement opening book
 
+        last_completed_search = None
         try:
             # The search method call (alpha beta or minimax) should happen in
             # here in order to avoid timeout. The try/except block will
             # automatically catch the exception raised by the search method
             # when the timer gets close to expiring
-            last_completed_search = getattr(self, self.method)(game, self.search_depth)
+            if self.search_depth > 0:
+                for depth in range(1, self.search_depth + 1):
+                    last_completed_search = getattr(self, self.method)(game, depth)
+            else:
+                depth = 1
+                results = []
+                while True:
+                    last_completed_search = getattr(self, self.method)(game, depth)
+                    results.append(last_completed_search)
+                    depth += 1
+
         except Timeout:
-            raise Timeout()
             # TODO Handle any actions required at timeout, if necessary
             pass
         return last_completed_search[1]
