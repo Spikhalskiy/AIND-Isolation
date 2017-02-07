@@ -19,6 +19,36 @@ class Timeout(Exception):
 NO_MOVE = (-1, -1)
 
 
+# this is just a copy-paste from agent_test.py
+def open_move_score(game, player):
+    """The basic evaluation function described in lecture that outputs a score
+    equal to the number of moves open for your computer player on the board.
+
+    Parameters
+    ----------
+    game : `isolation.Board`
+        An instance of `isolation.Board` encoding the current state of the
+        game (e.g., player locations and blocked cells).
+
+    player : hashable
+        One of the objects registered by the game object as a valid player.
+        (i.e., `player` should be either game.__player_1__ or
+        game.__player_2__).
+
+    Returns
+    ----------
+    float
+        The heuristic value of the current game state
+    """
+    if game.is_loser(player):
+        return float("-inf")
+
+    if game.is_winner(player):
+        return float("inf")
+
+    return float(len(game.get_legal_moves(player)))
+
+
 def custom_score(game, player):
     """Calculate the heuristic value of a game state from the point of view
     of the given player.
@@ -43,9 +73,8 @@ def custom_score(game, player):
     """
 
     assert isinstance(game, isolation.Board)
-    assert isinstance(player, CustomPlayer)
-    # TODO: finish this function!
-    raise NotImplementedError
+    # use selected heuristic here
+    return open_move_score(game, player)
 
 
 class CustomPlayer:
