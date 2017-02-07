@@ -19,10 +19,9 @@ class Timeout(Exception):
 NO_MOVE = (-1, -1)
 
 
-# this is just a copy-paste from agent_test.py
-def open_move_score(game, player):
-    """The basic evaluation function described in lecture that outputs a score
-    equal to the number of moves open for your computer player on the board.
+def score_aggressive_dif(game, player):
+    """Heuristic function with difference between active player's legal moves and opponent player's legal moves.
+     Modified to be more aggressive (1x for own moves, 2x for opposite moves)
 
     Parameters
     ----------
@@ -30,28 +29,59 @@ def open_move_score(game, player):
         An instance of `isolation.Board` encoding the current state of the
         game (e.g., player locations and blocked cells).
 
-    player : hashable
-        One of the objects registered by the game object as a valid player.
-        (i.e., `player` should be either game.__player_1__ or
-        game.__player_2__).
+    player : object
+        A player instance in the current game (i.e., an object corresponding to
+        one of the player objects `game.__player_1__` or `game.__player_2__`.)
 
     Returns
     ----------
     float
-        The heuristic value of the current game state
+        The heuristic value of the current game state to the specified player.
     """
+    assert isinstance(game, isolation.Board)
+
     if game.is_loser(player):
         return float("-inf")
 
     if game.is_winner(player):
         return float("inf")
 
-    return float(len(game.get_legal_moves(player)))
+    return float(len(game.get_legal_moves(player)) - 2 * len(game.get_legal_moves(game.get_opponent(player))))
+
+
+def score_safe_dif(game, player):
+    """Heuristic function with difference between active player's legal moves and opponent player's legal moves.
+     Modified to be less aggressive (2x for own moves, 1x for opposite moves)
+
+    Parameters
+    ----------
+    game : `isolation.Board`
+        An instance of `isolation.Board` encoding the current state of the
+        game (e.g., player locations and blocked cells).
+
+    player : object
+        A player instance in the current game (i.e., an object corresponding to
+        one of the player objects `game.__player_1__` or `game.__player_2__`.)
+
+    Returns
+    ----------
+    float
+        The heuristic value of the current game state to the specified player.
+    """
+
+    assert isinstance(game, isolation.Board)
+
+    if game.is_loser(player):
+        return float("-inf")
+
+    if game.is_winner(player):
+        return float("inf")
+
+    return float(2 * len(game.get_legal_moves(player)) - len(game.get_legal_moves(game.get_opponent(player))))
 
 
 def custom_score(game, player):
-    """Calculate the heuristic value of a game state from the point of view
-    of the given player.
+    """Calculate the heuristic value of a game state from the point of view of the given player.
 
     Note: this function should be called from within a Player instance as
     `self.score()` -- you should not need to call this function directly.
@@ -74,7 +104,7 @@ def custom_score(game, player):
 
     assert isinstance(game, isolation.Board)
     # use selected heuristic here
-    return open_move_score(game, player)
+    return score_safe_dif(game, player)
 
 
 class CustomPlayer:
@@ -154,8 +184,6 @@ class CustomPlayer:
 
         self.time_left = time_left
 
-        # TODO: finish this function!
-
         # Perform any required initializations, including selecting an initial
         # move from the game board (i.e., an opening book), or returning
         # immediately if there are no legal moves
@@ -164,7 +192,9 @@ class CustomPlayer:
         if not legal_moves:
             return NO_MOVE
 
-        # TODO implement opening book
+        # opening book
+        if game.move_count == 0:
+            return game.height // 2, game.width // 2
 
         last_completed_search = None
         try:
@@ -206,7 +236,7 @@ class CustomPlayer:
         # we calculate score/utilization function for maximizing player, not for an active one
         player_to_compute_terminal_score = active_player if maximizing_player else game.get_opponent(active_player)
         return self.score(game, player_to_compute_terminal_score)
-
+                                 
     def minimax(self, game, depth, maximizing_player=True):
         """Implement the minimax search algorithm as described in the lectures.
 
