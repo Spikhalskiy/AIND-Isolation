@@ -9,6 +9,7 @@ relative strength using tournament.py and include the results in your report.
 from operator import itemgetter
 
 from isolation import isolation
+from scores import *
 
 
 class Timeout(Exception):
@@ -17,67 +18,6 @@ class Timeout(Exception):
 
 
 NO_MOVE = (-1, -1)
-
-
-def score_aggressive_dif(game, player):
-    """Heuristic function with difference between active player's legal moves and opponent player's legal moves.
-     Modified to be more aggressive (1x for own moves, 2x for opposite moves)
-
-    Parameters
-    ----------
-    game : `isolation.Board`
-        An instance of `isolation.Board` encoding the current state of the
-        game (e.g., player locations and blocked cells).
-
-    player : object
-        A player instance in the current game (i.e., an object corresponding to
-        one of the player objects `game.__player_1__` or `game.__player_2__`.)
-
-    Returns
-    ----------
-    float
-        The heuristic value of the current game state to the specified player.
-    """
-    assert isinstance(game, isolation.Board)
-
-    if game.is_loser(player):
-        return float("-inf")
-
-    if game.is_winner(player):
-        return float("inf")
-
-    return float(len(game.get_legal_moves(player)) - 2 * len(game.get_legal_moves(game.get_opponent(player))))
-
-
-def score_safe_dif(game, player):
-    """Heuristic function with difference between active player's legal moves and opponent player's legal moves.
-     Modified to be less aggressive (2x for own moves, 1x for opposite moves)
-
-    Parameters
-    ----------
-    game : `isolation.Board`
-        An instance of `isolation.Board` encoding the current state of the
-        game (e.g., player locations and blocked cells).
-
-    player : object
-        A player instance in the current game (i.e., an object corresponding to
-        one of the player objects `game.__player_1__` or `game.__player_2__`.)
-
-    Returns
-    ----------
-    float
-        The heuristic value of the current game state to the specified player.
-    """
-
-    assert isinstance(game, isolation.Board)
-
-    if game.is_loser(player):
-        return float("-inf")
-
-    if game.is_winner(player):
-        return float("inf")
-
-    return float(2 * len(game.get_legal_moves(player)) - len(game.get_legal_moves(game.get_opponent(player))))
 
 
 def custom_score(game, player):
@@ -104,7 +44,12 @@ def custom_score(game, player):
 
     assert isinstance(game, isolation.Board)
     # use selected heuristic here
-    return score_safe_dif(game, player)
+    utility = game.utility(player)
+    if not utility == 0:
+        return utility
+
+    # Implementations of different scores could be find in ``scores.py```
+    return score_center_plus_safe_diff(game, player)
 
 
 class CustomPlayer:
@@ -193,8 +138,15 @@ class CustomPlayer:
             return NO_MOVE
 
         # opening book
-        if game.move_count == 0:
-            return game.height // 2, game.width // 2
+        if not game.get_player_location(game.active_player):
+            legal_moves = game.get_legal_moves()
+            move = (game.height // 2, game.width // 2)
+            if move in legal_moves:
+                return move
+            # it's a second turn - should be fine to put just near in the center
+            move = (move[0] - 1, move[1])
+            if move in legal_moves:
+                return move
 
         last_completed_search = None
         try:
